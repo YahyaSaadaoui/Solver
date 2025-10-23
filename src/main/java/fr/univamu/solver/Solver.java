@@ -188,6 +188,7 @@ public class Solver implements ISolver {
     }
 
 
+
     private void gt(Variable a, Variable b) {
         sub(newVar(1, Variable.MAX_VALUE), a, b);
     }
@@ -402,17 +403,32 @@ public class Solver implements ISolver {
 
 
     private void simplifyAnonymousVariables() {
-        List<Constraint> newConstraints = new ArrayList<>();
-        for (Constraint c : constraints) {
-            if (c.result() != null && !c.result().isNamed()) {
-                boolean usedElsewhere = constraints.stream().anyMatch(other ->
-                        other != c && (other.var1() == c.result() || other.var2() == c.result()));
-                if (!usedElsewhere) continue;
+        List<Constraint> toRemove = new ArrayList<>();
+        for (Constraint c1 : new ArrayList<>(constraints)) {
+            if (c1.result() == null) continue;
+            Variable result = c1.result();
+            if (result.isNamed()) continue;
+            for (Constraint c2 : new ArrayList<>(constraints)) {
+                if (c2.result() == null) continue;
+
+                if (c2.var1() == result && c2.var2() != null) {
+                    Variable replacement = c2.var2();
+                    Constraint newC = new Constraint(c1.type(), replacement, c1.var1(), c1.var2());
+                    constraints.add(newC);
+                    toRemove.add(c1);
+                    toRemove.add(c2);
+                } else if (c2.var2() == result && c2.var1() != null) {
+                    Variable replacement = c2.var1();
+                    Constraint newC = new Constraint(c1.type(), replacement, c1.var1(), c1.var2());
+                    constraints.add(newC);
+                    toRemove.add(c1);
+                    toRemove.add(c2);
+                }
             }
-            newConstraints.add(c);
         }
-        constraints.clear();
-        constraints.addAll(newConstraints);
+        constraints.removeAll(toRemove);
+        variables.removeIf(v -> !v.isNamed() && constraints.stream()
+                .noneMatch(c -> c.var1() == v || c.var2() == v || c.result() == v));
     }
 
     public void alwaysReduceStrategy() {

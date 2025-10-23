@@ -78,49 +78,32 @@ public class Reducer {
         }
     }
 
-
     private void reduceDiffConstraint(Constraint c) {
-        Variable x = c.var1();
-        Variable y = c.var2();
+        final Variable x = c.var1();
+        final Variable y = c.var2();
+        if (x == null || y == null) return;  // safety
         if (x.isOneValue() && y.isOneValue() && x.getMin() == y.getMin()) {
-            x.init(1, -1); // intervalle vide
+            x.init(1, -1);
             y.init(1, -1);
             modified = true;
             return;
         }
-
         if (y.isOneValue()) {
-            int valY = y.getMin();
-            if (x.contains(valY)) {
-                if (x.getMin() == valY) {
-                    modified = x.reduce(valY + 1, x.getMax()) || modified;
-                } else if (x.getMax() == valY) {     // ex : [10,20] → [10,19]
-                    modified = x.reduce(x.getMin(), valY - 1) || modified;
-                }
+            int v = y.getMin();
+            if (x.contains(v)) {
+                if (x.getMin() == v) modified = x.reduce(v + 1, x.getMax()) || modified;
+                else if (x.getMax() == v) modified = x.reduce(x.getMin(), v - 1) || modified;
             }
         }
-
         if (x.isOneValue()) {
-            int valX = x.getMin();
-            if (y.contains(valX)) {
-                if (y.getMin() == valX) {
-                    modified = y.reduce(valX + 1, y.getMax()) || modified;
-                } else if (y.getMax() == valX) {
-                    modified = y.reduce(y.getMin(), valX - 1) || modified;
-                }
+            int v = x.getMin();
+            if (y.contains(v)) {
+                if (y.getMin() == v) modified = y.reduce(v + 1, y.getMax()) || modified;
+                else if (y.getMax() == v) modified = y.reduce(y.getMin(), v - 1) || modified;
             }
         }
-        if (!x.isOneValue() && !y.isOneValue()) {
-
-            if (x.getMin() == x.getMax() && y.contains(x.getMin())) {
-                modified = y.reduce(y.getMin(), x.getMin() - 1) || modified;
-            }
-            if (y.getMin() == y.getMax() && x.contains(y.getMin())) {
-                modified = x.reduce(x.getMin(), y.getMin() - 1) || modified;
-            }
-        }
-
     }
+
 
 
     private void reduce(Constraint c) {
@@ -147,11 +130,6 @@ public class Reducer {
             Constraint c = toProcess.poll();
             resetModified();
             reduce(c);
-            if (modified) {
-                if (c.var1() != null) toProcess.add(c);
-                if (c.var2() != null) toProcess.add(c);
-                if (c.result() != null) toProcess.add(c);
-            }
         }
 
 
@@ -160,4 +138,6 @@ public class Reducer {
             variables.forEach(System.out::println);
         }
     }
+
+
 }
