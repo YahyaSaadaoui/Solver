@@ -11,17 +11,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repo
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Java
+      # Set up Java 17 with Gradle cache
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
+
+      # Make Gradle wrapper executable
+      - name: Grant execute permission for Gradle
+        run: chmod +x gradlew
 
       # Build project
       - name: Build with Gradle
@@ -32,9 +36,11 @@ jobs:
     needs: build
 
     steps:
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Set up Java 17 again for the test job
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -42,19 +48,25 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      # Run tests with coverage
-      - name: Run tests
+      # Make Gradle wrapper executable (in case it’s a fresh runner)
+      - name: Grant execute permission for Gradle
+        run: chmod +x gradlew
+
+      # Run tests and generate coverage
+      - name: Run tests with coverage
         run: ./gradlew test jacocoTestReport --no-daemon
 
-      # Display Jacoco coverage summary
+      # Display coverage summary in console
       - name: Show coverage summary
         run: |
           awk -F"," '{ instructions += $4 + $5; covered += $5 } \
-            END { print covered "/" instructions " instructions covered"; \
-            print 100*covered/instructions "% covered" }' \
+            END { if (instructions>0) { \
+            print covered "/" instructions " instructions covered"; \
+            print 100*covered/instructions "% covered"; } else { \
+            print "No coverage data found."; } }' \
             build/reports/jacoco/test/jacocoTestReport.csv || true
 
-      # Upload Jacoco coverage report
+      # Upload Jacoco coverage report as artifact
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
